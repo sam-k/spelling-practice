@@ -1,3 +1,7 @@
+# Custom ignore files
+.DS_Store
+in_progress_word_lists/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
