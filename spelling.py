@@ -2,8 +2,7 @@
 
 import csv, random, os
 from enum import Enum
-from gtts import gTTS
-from io import BytesIO
+from playsound import playsound
 from termcolor import colored
 
 
@@ -16,23 +15,27 @@ class ExtendedEnum(Enum):
 
 class YesNo(ExtendedEnum):
     """"""
+
     YES = 'Y'
     NO = 'N'
 
 
 class PracticeMode(ExtendedEnum):
     """"""
+
     TEXT = 'TEXT'
     LISTEN = 'LISTEN'
 
 
 class QuitError(Exception):
     """Raised when the user quits the program."""
+
     pass
 
 
 def start_program():
-    """"""
+    """
+    """
 
     print("╔═════════════════════════════════════════╗")
     print(
@@ -89,7 +92,8 @@ def start_program():
 
 def start_practice(practice_mode: PracticeMode, grade: int,
                    record_progress: bool, reset_progress: bool):
-    """"""
+    """
+    """
 
     print("┌─────────────────────────────────────────┐")
     print(
@@ -110,10 +114,6 @@ def start_practice(practice_mode: PracticeMode, grade: int,
     print("└─────────────────────────────────────────┘")
     print()
 
-    if practice_mode == PracticeMode.LISTEN:
-        # TODO: Support listen mode.
-        raise QuitError
-
     fname, word_scores = get_and_read_word_file(grade, record_progress,
                                                 reset_progress)
     word_list = list(word_scores.keys())
@@ -125,14 +125,51 @@ def start_practice(practice_mode: PracticeMode, grade: int,
                 max_score - score + 1 for score in word_scores.values()
             ]
             word = random.choices(word_list, weights=normalized_scores)[0]
-            result = get_input(
-                f"Can you spell {colored(word, 'blue', attrs=['bold'])} correctly ({colored('Y', 'magenta')}/{colored('N', 'magenta')})? "
-            )
-            while result not in YesNo.list():
+
+            if practice_mode == PracticeMode.TEXT:
                 result = get_input(
-                    f"Invalid input. Can you spell {colored(word, 'blue', attrs=['bold'])} correctly ({colored('Y', 'magenta')}/{colored('N', 'magenta')})? "
+                    f"Can you spell {colored(word, 'blue', attrs=['bold'])} correctly ({colored('Y', 'magenta')}/{colored('N', 'magenta')})? "
                 )
-            word_scores[word] += (1 if YesNo(result) == YesNo.YES else -1)
+                while result not in YesNo.list():
+                    result = get_input(
+                        f"Invalid input. Can you spell {colored(word, 'blue', attrs=['bold'])} correctly ({colored('Y', 'magenta')}/{colored('N', 'magenta')})? "
+                    )
+                word_scores[word] += (1 if YesNo(result) == YesNo.YES else -1)
+
+            elif practice_mode == PracticeMode.LISTEN:
+                word_audio_fname = f"./audio/grade_{grade}/normal/{word}.mp3"
+                if not os.path.exists(word_audio_fname):
+                    print(f"Audio file {word_audio_fname} is not downloaded.")
+                    raise QuitError
+                playsound(word_audio_fname)
+                result = get_input(
+                    f"Can you spell this word correctly (input {colored('R', 'magenta')} to replay the audio)? "
+                )
+                while result == 'R':
+                    word_audio_fname = f"./audio/grade_{grade}/slow/{word}.mp3"
+                    if not os.path.exists(word_audio_fname):
+                        print(
+                            f"Audio file {word_audio_fname} is not downloaded."
+                        )
+                        raise QuitError
+                    playsound(word_audio_fname)
+                    result = get_input(
+                        f"Can you spell this word correctly (input {colored('R', 'magenta')} to replay the audio)? "
+                    )
+                if result == word.upper():
+                    print(
+                        f"Correct! The word was {colored(word, 'green', attrs=['bold'])}."
+                    )
+                    word_scores[word] += 1
+                else:
+                    print(
+                        f"{colored(result.lower(), 'magenta', attrs=['bold'])} is incorrect. The word was {colored(word, 'blue', attrs=['bold'])}."
+                    )
+                    word_scores[word] -= 1
+                print()
+
+            else:
+                raise ValueError
     except QuitError:
         print()
         if record_progress:
@@ -147,7 +184,8 @@ def start_practice(practice_mode: PracticeMode, grade: int,
 
 def get_and_read_word_file(grade: int, record_progress: bool,
                            reset_progress: bool) -> tuple[str, dict[str, int]]:
-    """"""
+    """
+    """
 
     original_fname = f"./word_lists/grade_{grade}.txt"
     if not os.path.exists(original_fname):
@@ -159,16 +197,13 @@ def get_and_read_word_file(grade: int, record_progress: bool,
     if record_progress:
         fname = f"./in_progress_word_lists/grade_{grade}.csv"
         if not os.path.exists(fname) or reset_progress:
-            print("FIRST COND")
             with open(original_fname) as f:
                 word_scores = {word.strip(): 0 for word in f.readlines()}
         else:
-            print("SECOND COND")
             with open(fname) as f:
                 reader = csv.reader(f)
                 word_scores = {row[0].strip(): int(row[1]) for row in reader}
     else:
-        print("THIRD COND")
         fname = original_fname
         with open(fname) as f:
             word_scores = {word.strip(): 0 for word in f.readlines()}
@@ -177,7 +212,8 @@ def get_and_read_word_file(grade: int, record_progress: bool,
 
 
 def save_progress(fname: str, word_scores: dict[str, int]):
-    """"""
+    """
+    """
 
     with open(fname, mode='w') as f:
         writer = csv.writer(f)
@@ -194,8 +230,15 @@ def save_progress(fname: str, word_scores: dict[str, int]):
     print("└─────────────────────────────────────────┘")
 
 
-def get_input(prompt: str) -> str:
-    """"""
+def get_input(prompt: str = "") -> str:
+    """
+    Gets sanitized user input with the provided prompt. Throws QuitError when "Q" is entered.
+
+    Args:
+        prompt: Prompt for input.
+    Returns:
+        User input, stripped and in uppercase.
+    """
 
     val = input(prompt).strip().upper()
     if val == "Q":

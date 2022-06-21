@@ -1,6 +1,7 @@
 # Custom ignore files
 .DS_Store
 in_progress_word_lists/
+audio/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
